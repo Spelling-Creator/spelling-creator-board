@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+.kotlin/
+local.properties
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Xcode
+iosApp/*.xcodeproj
+iosApp/*.xcworkspace
+iosApp/build/
+iosApp/DerivedData/
+xcuserdata/
+*.xcuserstate
+
+# Screenshots and scratch files
+*.png
+!**/Assets.xcassets/**/*.png
+!**/res/**/*.png
