@@ -64,6 +64,26 @@ Xcode builds. The script sources `mise` to find the JDK; if you use another JDK 
 
 Run only one emulator or simulator at a time; two together use a lot of memory.
 
+## App icon
+
+The icon is the Lucide "letters" glyphs on a near-black square. The design source is
+`Icon/letters-outlined.svg`: the Lucide strokes converted to filled outlines, because Icon
+Composer and Android's vector importer both fill open paths and ignore strokes. To outline another
+stroked SVG, replace `currentColor` with a real color first, then:
+
+```bash
+/Applications/Inkscape.app/Contents/MacOS/inkscape in.svg \
+  --actions="select-all;object-stroke-to-path;select-all;path-union;export-plain-svg;export-filename:out.svg;export-do"
+```
+
+- **iOS:** `iosApp/Resources/AppIcon.icon` is the Icon Composer package, listed in `project.yml` as
+  a single file in the resources phase. Xcode compiles it into the app icon, and
+  `ASSETCATALOG_COMPILER_APPICON_NAME` must stay equal to its name, `AppIcon`. Edit it by opening it
+  in Icon Composer.
+- **Android:** an adaptive icon. `ic_launcher_foreground.xml` holds the same path data scaled into
+  the 66 dp safe zone, `ic_launcher_background.xml` is the matching near-black, and the foreground
+  doubles as the monochrome layer for themed icons.
+
 ## Lint and format
 
 ```bash
