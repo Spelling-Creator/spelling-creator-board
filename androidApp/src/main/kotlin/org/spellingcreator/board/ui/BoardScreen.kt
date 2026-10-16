@@ -1,5 +1,8 @@
 package org.spellingcreator.board.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Intent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -20,8 +23,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SpaceBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -34,6 +39,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -51,6 +58,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -115,11 +123,46 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
         onDispose { viewModel.feedbackSink = null }
     }
 
+    // A tablet dimming mid-sentence is a real problem with slow spellers, so the board keeps the screen on.
+    val view = LocalView.current
+    DisposableEffect(view) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val sentence = state.text.trim()
+    val copiedMessage = stringResource(R.string.copied)
+    val shareTitle = stringResource(R.string.share)
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    IconButton(
+                        enabled = sentence.isNotEmpty(),
+                        onClick = {
+                            val clipboard = context.getSystemService(ClipboardManager::class.java)
+                            clipboard?.setPrimaryClip(ClipData.newPlainText(shareTitle, sentence))
+                            scope.launch { snackbarHostState.showSnackbar(copiedMessage) }
+                        },
+                    ) {
+                        Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.copy))
+                    }
+                    IconButton(
+                        enabled = sentence.isNotEmpty(),
+                        onClick = {
+                            val send =
+                                Intent(Intent.ACTION_SEND)
+                                    .setType("text/plain")
+                                    .putExtra(Intent.EXTRA_TEXT, sentence)
+                            context.startActivity(Intent.createChooser(send, shareTitle))
+                        },
+                    ) {
+                        Icon(Icons.Outlined.Share, contentDescription = shareTitle)
+                    }
                     IconButton(onClick = { showSettings = true }) {
                         Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings))
                     }

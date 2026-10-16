@@ -2,6 +2,9 @@
 <resources>
     <string name="app_name">Spelling Board</string>
     <string name="settings">Settings</string>
+    <string name="share">Share</string>
+    <string name="copy">Copy</string>
+    <string name="copied">Copied</string>
     <string name="done">Done</string>
     <string name="delete">Delete</string>
     <string name="space">Space</string>

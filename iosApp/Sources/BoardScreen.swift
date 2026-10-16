@@ -4,6 +4,7 @@ import SwiftUI
 struct BoardScreen: View {
     @EnvironmentObject private var model: BoardModel
     @State private var showSettings = false
+    @State private var copied = false
 
     var body: some View {
         NavigationStack {
@@ -35,7 +36,18 @@ struct BoardScreen: View {
             .navigationTitle("Spelling Board")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        UIPasteboard.general.string = sentence
+                        copied = true
+                    } label: {
+                        Label("Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+                    }
+                    .disabled(sentence.isEmpty)
+                    ShareLink(item: sentence) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(sentence.isEmpty)
                     Button {
                         showSettings = true
                     } label: {
@@ -46,7 +58,21 @@ struct BoardScreen: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
+            .onChange(of: copied) { _, isCopied in
+                guard isCopied else { return }
+                Task {
+                    try? await Task.sleep(for: .seconds(1.5))
+                    copied = false
+                }
+            }
+            // A tablet dimming mid-sentence is a real problem with slow spellers, so the board keeps the screen on.
+            .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+            .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         }
+    }
+
+    private var sentence: String {
+        model.state.text.trimmingCharacters(in: .whitespaces)
     }
 
     private var layoutPicker: some View {

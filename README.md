@@ -22,6 +22,8 @@ hub's lessons; see [docs/integration.md](docs/integration.md).
   fingers entirely.
 - Letters are spoken from pre-rendered clips so there is no text to speech delay between presses.
 - Space reads the word back. Speak reads the sentence. Delete and Clear say what they did.
+- Share sends the sentence through the system share sheet (messages, mail, notes, anything installed),
+  and Copy puts it on the clipboard. The screen stays awake while the board is showing.
 - Per-speller settings: commit on touch-down or touch-up, the repeat window, stylus only, sounds, haptics.
 
 ## Layout
