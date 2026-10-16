@@ -5,6 +5,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
+import org.spellingcreator.board.history.PreferencesHistoryStore
 import org.spellingcreator.board.input.PointerEvent
 import org.spellingcreator.board.session.BoardSession
 import org.spellingcreator.board.session.BoardSessionListener
@@ -33,7 +34,12 @@ class BoardViewModel(
             }
         }
 
-    val session: BoardSession = BoardSession(settings = store.load(), listener = listener)
+    val session: BoardSession =
+        BoardSession(
+            settings = store.load(),
+            listener = listener,
+            historyStore = PreferencesHistoryStore(application),
+        )
 
     private val mutableState: MutableState<BoardState> = mutableStateOf(session.state)
     val state: State<BoardState> = mutableState
@@ -63,4 +69,16 @@ class BoardViewModel(
     fun clear() = session.clear()
 
     fun speak() = session.speak()
+
+    fun recordSentence() = session.recordSentence()
+
+    fun speakHistoryEntry(id: String) = session.speakHistoryEntry(id)
+
+    fun restoreHistoryEntry(id: String) = session.restoreHistoryEntry(id)
+
+    fun deleteHistoryEntry(id: String) = session.deleteHistoryEntry(id)
+
+    fun clearHistory() = session.clearHistory()
+
+    val historyText: String get() = session.historyText
 }

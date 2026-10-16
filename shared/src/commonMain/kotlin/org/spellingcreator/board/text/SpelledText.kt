@@ -36,4 +36,10 @@ class SpelledText {
     fun clear() {
         builder.setLength(0)
     }
+
+    /** Replaces the whole sentence, for putting a kept sentence back on the board. */
+    fun replace(text: String) {
+        builder.setLength(0)
+        builder.append(text)
+    }
 }

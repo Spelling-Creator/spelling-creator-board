@@ -30,7 +30,8 @@ final class BoardModel: ObservableObject {
     init() {
         let settings = store.load()
         let bridge = Bridge()
-        let session = BoardSession(settings: settings, listener: bridge)
+        let session = BoardSession(
+            settings: settings, listener: bridge, historyStore: PreferencesHistoryStore(defaults: .standard))
         self.session = session
         self.state = session.state
         bridge.model = self
@@ -70,6 +71,14 @@ final class BoardModel: ObservableObject {
     func backspace() { session.backspace() }
     func clear() { session.clear() }
     func speak() { session.speak() }
+
+    func recordSentence() { session.recordSentence() }
+    func speakHistoryEntry(_ id: String) { session.speakHistoryEntry(id: id) }
+    func restoreHistoryEntry(_ id: String) { session.restoreHistoryEntry(id: id) }
+    func deleteHistoryEntry(_ id: String) { session.deleteHistoryEntry(id: id) }
+    func clearHistory() { session.clearHistory() }
+
+    var historyText: String { session.historyText }
 
     fileprivate func stateChanged(_ state: BoardState) {
         self.state = state

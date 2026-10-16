@@ -4,6 +4,7 @@ import SwiftUI
 struct BoardScreen: View {
     @EnvironmentObject private var model: BoardModel
     @State private var showSettings = false
+    @State private var showHistory = false
     @State private var copied = false
 
     var body: some View {
@@ -39,6 +40,7 @@ struct BoardScreen: View {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {
                         UIPasteboard.general.string = sentence
+                        model.recordSentence()
                         copied = true
                     } label: {
                         Label("Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
@@ -48,6 +50,12 @@ struct BoardScreen: View {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
                     .disabled(sentence.isEmpty)
+                    .simultaneousGesture(TapGesture().onEnded { model.recordSentence() })
+                    Button {
+                        showHistory = true
+                    } label: {
+                        Label("History", systemImage: "clock")
+                    }
                     Button {
                         showSettings = true
                     } label: {
@@ -57,6 +65,9 @@ struct BoardScreen: View {
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
+            }
+            .sheet(isPresented: $showHistory) {
+                HistoryView()
             }
             .onChange(of: copied) { _, isCopied in
                 guard isCopied else { return }

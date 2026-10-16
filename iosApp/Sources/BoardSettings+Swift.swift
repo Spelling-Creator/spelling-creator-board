@@ -14,7 +14,8 @@ extension BoardSettings {
         stylusOnly: Bool? = nil,
         letterSounds: Bool? = nil,
         speakWords: Bool? = nil,
-        haptics: Bool? = nil
+        haptics: Bool? = nil,
+        keepHistory: Bool? = nil
     ) -> BoardSettings {
         BoardSettings(
             layoutId: layoutId ?? self.layoutId,
@@ -25,7 +26,8 @@ extension BoardSettings {
             letterSounds: letterSounds ?? self.letterSounds,
             speakWords: speakWords ?? self.speakWords,
             haptics: haptics ?? self.haptics,
-            voiceId: voiceId
+            voiceId: voiceId,
+            keepHistory: keepHistory ?? self.keepHistory
         )
     }
 
@@ -40,7 +42,8 @@ extension BoardSettings {
             letterSounds: letterSounds,
             speakWords: speakWords,
             haptics: haptics,
-            voiceId: voiceId
+            voiceId: voiceId,
+            keepHistory: keepHistory
         )
     }
 }

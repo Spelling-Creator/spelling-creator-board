@@ -61,6 +61,16 @@ struct SettingsView: View {
                             + "Settings, Accessibility, Spoken Content, Voices, and it will be used automatically.")
                 }
 
+                Section {
+                    Toggle("Keep a history of sentences", isOn: binding(\.keepHistory) { $0.with(keepHistory: $1) })
+                } header: {
+                    Text("Privacy")
+                } footer: {
+                    Text(
+                        "Finished sentences are kept on this device only, and can be deleted one at a time or all "
+                            + "at once from History. Turning this off deletes them.")
+                }
+
                 Section("Feedback") {
                     Toggle("Say each letter", isOn: binding(\.letterSounds) { $0.with(letterSounds: $1) })
                     Toggle("Read each word back after Space", isOn: binding(\.speakWords) { $0.with(speakWords: $1) })

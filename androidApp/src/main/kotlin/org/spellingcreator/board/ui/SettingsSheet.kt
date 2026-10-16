@@ -160,6 +160,14 @@ fun SettingsSheet(
                 checked = settings.haptics,
                 onCheckedChange = { onChange(settings.copy(haptics = it)) },
             )
+
+            Text(stringResource(R.string.privacy), style = MaterialTheme.typography.titleMedium)
+            ToggleRow(
+                title = stringResource(R.string.keep_history),
+                subtitle = stringResource(R.string.keep_history_hint),
+                checked = settings.keepHistory,
+                onCheckedChange = { onChange(settings.copy(keepHistory = it)) },
+            )
         }
     }
 }

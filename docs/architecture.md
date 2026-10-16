@@ -20,6 +20,7 @@ Package `org.spellingcreator.board`.
 | `input`    | `PointerEvent` (one raw touch, in board coordinates, with a monotonic timestamp and whether it was a finger or stylus) and `SelectionEngine`, which turns events into selections. |
 | `text`     | `SpelledText`: the sentence, the current word, space, backspace, clear.                                                                        |
 | `settings` | `BoardSettings` (per-speller preferences, serializable) and `SettingsStore` (expect/actual over `SharedPreferences` and `NSUserDefaults`).      |
+| `history`  | `SentenceHistory` (finished sentences, newest first, capped at 500, no consecutive duplicates), `HistoryEntry`, and `HistoryStore` with a preferences-backed actual per platform and an in-memory one for tests. |
 | `session`  | `BoardSession`, the one object the apps talk to, plus `BoardState` (what to draw) and `Feedback` (what to do right now).                        |
 
 ### `BoardSession`
@@ -43,6 +44,14 @@ Rows may have different lengths (the alphabet board has four rows of five and on
 keys are spread evenly across the full width, like the cutouts on a stencil. Hit testing is "nearest
 key": a touch in a gap or in the padding snaps to the closest cell, so the only way to miss is to touch
 outside the board rectangle.
+
+### History
+
+A sentence is kept when it is spoken, shared, copied or cleared, through `recordSentence()`, and
+the same text is never kept twice in a row, so Speak followed by Clear records it once. History
+is part of `BoardState` so both apps render it from the same list. Privacy rules: `keepHistory`
+in settings stops recording and deletes what was kept, and the session exposes delete-one and
+delete-all. Entries never leave the device unless the partner shares them.
 
 ### Two looks, one geometry
 

@@ -1,5 +1,9 @@
 package org.spellingcreator.board.session
 
+import org.spellingcreator.board.history.HistoryEntry
+import org.spellingcreator.board.history.HistoryStore
+import org.spellingcreator.board.history.InMemoryHistoryStore
+import org.spellingcreator.board.history.SentenceHistory
 import org.spellingcreator.board.input.PointerEvent
 import org.spellingcreator.board.input.SelectionEngine
 import org.spellingcreator.board.input.SelectionKind
@@ -16,6 +20,8 @@ data class BoardState(
     val currentWord: String,
     val pressedKeyId: String?,
     val settings: BoardSettings,
+    /** Finished sentences, newest first. Empty while history is off. */
+    val history: List<HistoryEntry>,
 )
 
 /** Implemented by the platform UI. Both callbacks arrive on the thread that drove the session. */
@@ -35,7 +41,10 @@ interface BoardSessionListener {
 class BoardSession(
     settings: BoardSettings = BoardSettings(),
     private val listener: BoardSessionListener,
+    historyStore: HistoryStore = InMemoryHistoryStore(),
 ) {
+    private val history = SentenceHistory(historyStore)
+
     var settings: BoardSettings = settings
         private set
 
@@ -62,13 +71,19 @@ class BoardSession(
                 currentWord = spelled.currentWord,
                 pressedKeyId = pressedKeyId,
                 settings = settings,
+                history = history.entries,
             )
+
+    /** Every kept sentence as one block of text, oldest first, for sharing. */
+    val historyText: String get() = history.asText()
 
     fun updateSettings(newSettings: BoardSettings) {
         settings = newSettings
         engine.commitMode = newSettings.commitMode
         engine.refractoryMillis = newSettings.refractoryMillis
         engine.stylusOnly = newSettings.stylusOnly
+        // Turning history off is a privacy choice, so it also deletes what was kept.
+        if (!newSettings.keepHistory) history.clear()
         if (layout.id != newSettings.layoutId) {
             layout = BoardLayouts.byId(newSettings.layoutId)
             engine.reset()
@@ -140,18 +155,53 @@ class BoardSession(
         emit(Feedback(FeedbackKind.DELETED, text = removed, haptic = HapticKind.CONFIRM))
     }
 
+    /** Clears the board. The sentence goes into the history first, so Clear never loses it. */
     fun clear() {
         if (spelled.isEmpty) return
+        recordSentence()
         spelled.clear()
         publish()
         emit(Feedback(FeedbackKind.CLEARED, haptic = HapticKind.CONFIRM))
     }
 
-    /** Reads the whole sentence aloud. */
+    /** Reads the whole sentence aloud and keeps it in the history. */
     fun speak() {
         val text = spelled.text.trim()
         if (text.isEmpty()) return
+        recordSentence()
         emit(Feedback(FeedbackKind.SAY, text = text, interrupt = true))
+    }
+
+    /**
+     * Keeps the current sentence in the history, if history is on. Speak and Clear call this, and
+     * the apps call it when the sentence is shared or copied. The same sentence is not kept twice
+     * in a row, so speaking and then clearing records it once.
+     */
+    fun recordSentence() {
+        if (!settings.keepHistory) return
+        if (history.record(spelled.text)) publish()
+    }
+
+    fun speakHistoryEntry(id: String) {
+        val entry = history.entry(id) ?: return
+        emit(Feedback(FeedbackKind.SAY, text = entry.text, interrupt = true))
+    }
+
+    /** Puts a kept sentence back on the board, replacing whatever is there. */
+    fun restoreHistoryEntry(id: String) {
+        val entry = history.entry(id) ?: return
+        spelled.replace(entry.text)
+        publish()
+    }
+
+    fun deleteHistoryEntry(id: String) {
+        history.remove(id)
+        publish()
+    }
+
+    fun clearHistory() {
+        history.clear()
+        publish()
     }
 
     private fun publish() = listener.onStateChanged(state)

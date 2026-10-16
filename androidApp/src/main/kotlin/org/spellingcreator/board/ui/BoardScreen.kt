@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SpaceBar
@@ -86,6 +87,7 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
     var popped by remember { mutableStateOf<String?>(null) }
     var popCount by remember { mutableIntStateOf(0) }
     var showSettings by remember { mutableStateOf(false) }
+    var showHistory by remember { mutableStateOf(false) }
 
     val voice = remember { LetterVoice(context) }
     DisposableEffect(voice) { onDispose { voice.release() } }
@@ -146,6 +148,7 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
                         onClick = {
                             val clipboard = context.getSystemService(ClipboardManager::class.java)
                             clipboard?.setPrimaryClip(ClipData.newPlainText(shareTitle, sentence))
+                            viewModel.recordSentence()
                             scope.launch { snackbarHostState.showSnackbar(copiedMessage) }
                         },
                     ) {
@@ -159,9 +162,13 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
                                     .setType("text/plain")
                                     .putExtra(Intent.EXTRA_TEXT, sentence)
                             context.startActivity(Intent.createChooser(send, shareTitle))
+                            viewModel.recordSentence()
                         },
                     ) {
                         Icon(Icons.Outlined.Share, contentDescription = shareTitle)
+                    }
+                    IconButton(onClick = { showHistory = true }) {
+                        Icon(Icons.Outlined.History, contentDescription = stringResource(R.string.history))
                     }
                     IconButton(onClick = { showSettings = true }) {
                         Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings))
@@ -222,6 +229,28 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
                 }
             }
         }
+    }
+
+    if (showHistory) {
+        HistorySheet(
+            entries = state.history,
+            enabled = state.settings.keepHistory,
+            onShareAll = {
+                val send =
+                    Intent(Intent.ACTION_SEND)
+                        .setType("text/plain")
+                        .putExtra(Intent.EXTRA_TEXT, viewModel.historyText)
+                context.startActivity(Intent.createChooser(send, shareTitle))
+            },
+            onDeleteAll = viewModel::clearHistory,
+            onSpeak = viewModel::speakHistoryEntry,
+            onRestore = { id ->
+                viewModel.restoreHistoryEntry(id)
+                showHistory = false
+            },
+            onDelete = viewModel::deleteHistoryEntry,
+            onDismiss = { showHistory = false },
+        )
     }
 
     if (showSettings) {

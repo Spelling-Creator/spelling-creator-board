@@ -17,6 +17,8 @@ data class BoardSettings(
     val haptics: Boolean = true,
     /** A platform voice identifier, or null to use the best voice installed for the current language. */
     val voiceId: String? = null,
+    /** Keep finished sentences on the device. Turning this off deletes the ones already kept. */
+    val keepHistory: Boolean = true,
 ) {
     companion object {
         const val MIN_REFRACTORY_MILLIS: Long = 0
