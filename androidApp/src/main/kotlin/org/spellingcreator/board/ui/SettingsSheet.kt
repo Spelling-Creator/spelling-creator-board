@@ -1,5 +1,6 @@
 package org.spellingcreator.board.ui
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,22 +9,34 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.spellingcreator.board.R
+import org.spellingcreator.board.feedback.VoiceOption
 import org.spellingcreator.board.input.CommitMode
 import org.spellingcreator.board.settings.BoardSettings
 import org.spellingcreator.board.settings.BoardStyle
@@ -34,6 +47,7 @@ private const val REFRACTORY_STEP_MILLIS = 50L
 @Composable
 fun SettingsSheet(
     settings: BoardSettings,
+    voices: List<VoiceOption>,
     onChange: (BoardSettings) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -126,6 +140,11 @@ fun SettingsSheet(
                 checked = settings.stylusOnly,
                 onCheckedChange = { onChange(settings.copy(stylusOnly = it)) },
             )
+            VoicePicker(
+                voices = voices,
+                selectedId = settings.voiceId,
+                onSelect = { onChange(settings.copy(voiceId = it)) },
+            )
             ToggleRow(
                 title = stringResource(R.string.letter_sounds),
                 checked = settings.letterSounds,
@@ -144,6 +163,69 @@ fun SettingsSheet(
         }
     }
 }
+
+/** The system voice for letters and words, with a way to the system screen where more can be installed. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VoicePicker(
+    voices: List<VoiceOption>,
+    selectedId: String?,
+    onSelect: (String?) -> Unit,
+) {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+    val automatic = stringResource(R.string.voice_automatic)
+    val selectedLabel = voices.firstOrNull { it.id == selectedId }?.let { "${it.name}, ${it.quality}" } ?: automatic
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(stringResource(R.string.voice), style = MaterialTheme.typography.titleMedium)
+        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+            OutlinedTextField(
+                value = selectedLabel,
+                onValueChange = {},
+                readOnly = true,
+                singleLine = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+            )
+            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(automatic) },
+                    onClick = {
+                        onSelect(null)
+                        expanded = false
+                    },
+                )
+                voices.forEach { voice ->
+                    DropdownMenuItem(
+                        text = { Text("${voice.name}, ${voice.quality}") },
+                        onClick = {
+                            onSelect(voice.id)
+                            expanded = false
+                        },
+                    )
+                }
+            }
+        }
+        Text(
+            stringResource(R.string.voice_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(
+            onClick = {
+                val intent = Intent(TTS_SETTINGS_ACTION).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                runCatching { context.startActivity(intent) }
+            },
+        ) {
+            Text(stringResource(R.string.open_tts_settings))
+        }
+    }
+}
+
+private const val TTS_SETTINGS_ACTION = "com.android.settings.TTS_SETTINGS"
 
 @Composable
 private fun ToggleRow(

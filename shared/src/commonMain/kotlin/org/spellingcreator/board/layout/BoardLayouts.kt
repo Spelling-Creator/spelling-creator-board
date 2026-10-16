@@ -10,7 +10,13 @@ object BoardLayouts {
             rows =
                 listOf("ABCDE", "FGHIJ", "KLMNO", "PQRST", "UVWXYZ").map { row ->
                     row.map { letter ->
-                        BoardKey(id = "letter-$letter", label = letter.toString(), kind = KeyKind.LETTER)
+                        // Spoken in lowercase: engines read an uppercase letter on its own as "capital A".
+                        BoardKey(
+                            id = "letter-$letter",
+                            label = letter.toString(),
+                            kind = KeyKind.LETTER,
+                            spoken = letter.lowercaseChar().toString(),
+                        )
                     }
                 },
         )

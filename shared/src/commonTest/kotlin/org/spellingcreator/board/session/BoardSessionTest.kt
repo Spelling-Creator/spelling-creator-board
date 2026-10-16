@@ -41,7 +41,7 @@ class BoardSessionTest {
         tap("letter-T", 2000)
         session.space()
         assertEquals("CAT ", state?.text)
-        assertEquals(listOf("C", "A", "T", "CAT"), feedback.filter { it.kind == FeedbackKind.SAY }.map { it.text })
+        assertEquals(listOf("c", "a", "t", "CAT"), feedback.filter { it.kind == FeedbackKind.SAY }.map { it.text })
         assertEquals(3, feedback.count { it.kind == FeedbackKind.KEY_COMMITTED })
     }
 

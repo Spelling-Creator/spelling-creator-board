@@ -24,7 +24,23 @@ extension BoardSettings {
             stylusOnly: stylusOnly ?? self.stylusOnly,
             letterSounds: letterSounds ?? self.letterSounds,
             speakWords: speakWords ?? self.speakWords,
-            haptics: haptics ?? self.haptics
+            haptics: haptics ?? self.haptics,
+            voiceId: voiceId
+        )
+    }
+
+    /// The voice is optional in the model, so clearing it needs its own call.
+    func withVoice(_ voiceId: String?) -> BoardSettings {
+        BoardSettings(
+            layoutId: layoutId,
+            style: style,
+            commitMode: commitMode,
+            refractoryMillis: refractoryMillis,
+            stylusOnly: stylusOnly,
+            letterSounds: letterSounds,
+            speakWords: speakWords,
+            haptics: haptics,
+            voiceId: voiceId
         )
     }
 }

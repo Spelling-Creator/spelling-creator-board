@@ -20,7 +20,14 @@ cell is highlighted and the letter commits where the finger lifts.
 
 On `KEY_COMMITTED` the apps do all of this at once:
 
-- **Sound.** The letter name is spoken from a pre-rendered clip. Live text to speech takes long
+- **Sound.** The letter name is spoken from a pre-rendered clip, in the best voice installed for
+  the device's language unless the partner picks one in settings. Compact voices blur Z and C,
+  so the settings screen points to where higher quality voices are installed. Single letters are
+  handed to the engine as a letter name (one `say-as` tag, the same for every letter, no
+  per-letter pronunciation table) and spoken a little slower than running speech. Every sound
+  starts with 60 ms of silence: the audio output wakes up over the first few tens of
+  milliseconds and anything spoken in that window is lost, which turned "boo" into "oo" and
+  blunted the "z" of "zee". Clips get the silence baked in; live speech gets it as a delay. Live text to speech takes long
   enough to start that it is exactly the lag that triggers a second press, so each phrase on the
   current board is synthesized once (to a file on Android, to a PCM buffer on iOS) and played from
   memory after that. Until a clip exists, the live engine is used so nothing is silent. A new letter

@@ -15,6 +15,8 @@ data class BoardSettings(
     val letterSounds: Boolean = true,
     val speakWords: Boolean = true,
     val haptics: Boolean = true,
+    /** A platform voice identifier, or null to use the best voice installed for the current language. */
+    val voiceId: String? = null,
 ) {
     companion object {
         const val MIN_REFRACTORY_MILLIS: Long = 0

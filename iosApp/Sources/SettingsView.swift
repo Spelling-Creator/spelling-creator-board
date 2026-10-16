@@ -45,6 +45,22 @@ struct SettingsView: View {
                     Text("Fingers are ignored, so a steadying hand cannot add letters.")
                 }
 
+                Section {
+                    Picker("Voice", selection: voiceId) {
+                        Text("Automatic (best installed)").tag(String?.none)
+                        ForEach(model.availableVoices) { voice in
+                            Text("\(voice.name) (\(voice.quality))").tag(Optional(voice.id))
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                } header: {
+                    Text("Voice")
+                } footer: {
+                    Text(
+                        "Compact voices blur letters like Z and C. Download an Enhanced or Premium voice in "
+                            + "Settings, Accessibility, Spoken Content, Voices, and it will be used automatically.")
+                }
+
                 Section("Feedback") {
                     Toggle("Say each letter", isOn: binding(\.letterSounds) { $0.with(letterSounds: $1) })
                     Toggle("Read each word back after Space", isOn: binding(\.speakWords) { $0.with(speakWords: $1) })
@@ -64,6 +80,13 @@ struct SettingsView: View {
     private var refractoryLabel: String {
         let millis = model.settings.refractoryMillis
         return millis == 0 ? "Off" : "\(millis) ms"
+    }
+
+    private var voiceId: Binding<String?> {
+        Binding(
+            get: { model.settings.voiceId },
+            set: { model.update(model.settings.withVoice($0)) }
+        )
     }
 
     private var style: Binding<BoardStyle> {

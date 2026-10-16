@@ -81,7 +81,10 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
 
     val voice = remember { LetterVoice(context) }
     DisposableEffect(voice) { onDispose { voice.release() } }
-    LaunchedEffect(state.layout.id) { voice.prepare(state.layout.keys.map { it.spoken }) }
+    LaunchedEffect(state.layout.id, state.settings.voiceId) {
+        voice.select(state.settings.voiceId)
+        voice.prepare(state.layout.keys.map { it.spoken })
+    }
 
     DisposableEffect(viewModel) {
         viewModel.feedbackSink = { feedback ->
@@ -181,6 +184,7 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
     if (showSettings) {
         SettingsSheet(
             settings = state.settings,
+            voices = remember { voice.availableVoices() },
             onChange = viewModel::updateSettings,
             onDismiss = { showSettings = false },
         )

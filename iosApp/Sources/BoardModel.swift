@@ -34,10 +34,13 @@ final class BoardModel: ObservableObject {
         self.session = session
         self.state = session.state
         bridge.model = self
+        voice.select(voiceId: settings.voiceId)
         voice.prepare(phrases: session.layout.keys.map(\.spoken))
     }
 
     var layouts: [BoardLayout] { BoardLayouts.shared.all }
+
+    var availableVoices: [VoiceOption] { LetterVoice.availableVoices() }
 
     var settings: BoardSettings { state.settings }
 
@@ -55,6 +58,7 @@ final class BoardModel: ObservableObject {
     func update(_ settings: BoardSettings) {
         session.updateSettings(newSettings: settings)
         store.save(settings: settings)
+        voice.select(voiceId: settings.voiceId)
         voice.prepare(phrases: session.layout.keys.map(\.spoken))
     }
 

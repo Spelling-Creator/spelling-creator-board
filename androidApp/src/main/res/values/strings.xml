@@ -19,6 +19,10 @@
     <string name="repeat_window_value">%1$d ms</string>
     <string name="stylus_only">Stylus only</string>
     <string name="stylus_only_hint">Fingers are ignored, so a steadying hand cannot add letters</string>
+    <string name="voice">Voice</string>
+    <string name="voice_automatic">Automatic (best installed)</string>
+    <string name="voice_hint">Low quality voices blur letters like Z and C. Install a higher quality voice in the system text to speech settings and it will be used automatically.</string>
+    <string name="open_tts_settings">Text to speech settings</string>
     <string name="letter_sounds">Say each letter</string>
     <string name="speak_words">Read each word back after Space</string>
     <string name="haptics">Vibrate on each letter</string>

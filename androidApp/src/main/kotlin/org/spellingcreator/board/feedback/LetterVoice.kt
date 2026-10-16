@@ -6,9 +6,18 @@ import android.media.SoundPool
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.Voice
 import android.util.Log
 import java.io.File
 import java.util.Locale
+
+/** A system voice the partner can pick in settings. */
+data class VoiceOption(
+    val id: String,
+    val name: String,
+    val quality: String,
+    val language: String,
+)
 
 /**
  * Says letters with as little delay as possible.
@@ -16,11 +25,15 @@ import java.util.Locale
  * Live text to speech takes long enough to start that a speller presses the letter again. So each
  * short phrase is synthesized to a file once, loaded into a [SoundPool], and played from memory on
  * later presses. Until a clip is ready, the live engine is used so nothing is ever silent.
+ *
+ * The voice matters for single letters: low quality voices blur Z and C, B and P. With no voice
+ * chosen, the best installed voice for the current language is used.
  */
 class LetterVoice(
     context: Context,
 ) {
-    private val cacheDir = File(context.cacheDir, "letter-voice").apply { mkdirs() }
+    // Bump the folder name whenever the way clips are rendered changes, so stale clips are not reused.
+    private val cacheDir = File(context.cacheDir, "letter-voice-v3").apply { mkdirs() }
     private val soundPool =
         SoundPool
             .Builder()
@@ -37,6 +50,7 @@ class LetterVoice(
     private val loadedClips = HashSet<Int>()
     private val rendering = HashSet<String>()
     private var pendingPhrases: List<String> = emptyList()
+    private var requestedVoiceId: String? = null
     private var engineReady = false
     private var currentStream = 0
 
@@ -46,6 +60,7 @@ class LetterVoice(
             if (engineReady) {
                 engine.language = Locale.getDefault()
                 engine.setOnUtteranceProgressListener(progressListener)
+                applyVoice()
                 prepare(pendingPhrases)
             } else {
                 Log.w(TAG, "Text to speech is unavailable; letters will be silent")
@@ -60,8 +75,9 @@ class LetterVoice(
                 val phrase = utteranceId.removePrefix(CLIP_PREFIX)
                 if (phrase == utteranceId) return
                 rendering.remove(phrase)
-                val id = soundPool.load(fileFor(phrase).path, 1)
-                clipIds[phrase] = id
+                val file = fileFor(phrase)
+                WavSilence.prepend(file, ONSET_SILENCE_MILLIS)
+                clipIds[phrase] = soundPool.load(file.path, 1)
             }
 
             @Deprecated("Deprecated in Java")
@@ -76,6 +92,28 @@ class LetterVoice(
         }
     }
 
+    /** Installed voices for the current language, best first. Empty until the engine is ready. */
+    fun availableVoices(): List<VoiceOption> =
+        rankedVoices().map { voice ->
+            VoiceOption(
+                id = voice.name,
+                name = displayName(voice),
+                quality = qualityLabel(voice.quality),
+                language = voice.locale.toLanguageTag(),
+            )
+        }
+
+    /** Switches voice, or back to the best installed one with null. Clips are rendered again for it. */
+    fun select(voiceId: String?) {
+        if (voiceId == requestedVoiceId && engineReady) return
+        requestedVoiceId = voiceId
+        if (!engineReady) return
+        applyVoice()
+        clipIds.clear()
+        loadedClips.clear()
+        prepare(pendingPhrases)
+    }
+
     /** Renders clips for these phrases in the background. Safe to call before the engine is ready. */
     fun prepare(phrases: List<String>) {
         pendingPhrases = phrases
@@ -88,7 +126,8 @@ class LetterVoice(
                 continue
             }
             rendering += phrase
-            engine.synthesizeToFile(phrase, Bundle(), file, CLIP_PREFIX + phrase)
+            engine.setSpeechRate(if (phrase.length == 1) LETTER_RATE else 1f)
+            engine.synthesizeToFile(speakable(phrase), Bundle(), file, CLIP_PREFIX + phrase)
         }
     }
 
@@ -108,7 +147,10 @@ class LetterVoice(
         if (!engineReady) return
         val queueMode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
         if (interrupt) soundPool.stop(currentStream)
-        engine.speak(text, queueMode, null, "live")
+        engine.setSpeechRate(if (text.length == 1) LETTER_RATE else 1f)
+        // A moment of silence first wakes the audio output, so the first consonant is not lost.
+        engine.playSilentUtterance(ONSET_SILENCE_MILLIS.toLong(), queueMode, "silence")
+        engine.speak(speakable(text), TextToSpeech.QUEUE_ADD, null, "live")
     }
 
     fun release() {
@@ -117,13 +159,88 @@ class LetterVoice(
         soundPool.release()
     }
 
+    /**
+     * A single character is spoken as a letter name, so pairs like Z and C keep their difference.
+     * That is one SSML tag, the same for every letter, and only Google's engine is known to honor
+     * it; other engines get the plain character so they never read the tag aloud.
+     */
+    private fun speakable(phrase: String): CharSequence {
+        if (phrase.length != 1 || engine.defaultEngine != GOOGLE_ENGINE) return phrase
+        val escaped = phrase.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        return "<speak><say-as interpret-as=\"characters\">$escaped</say-as></speak>"
+    }
+
+    private fun applyVoice() {
+        val voices = rankedVoices()
+        val chosen = voices.firstOrNull { it.name == requestedVoiceId } ?: voices.firstOrNull() ?: return
+        engine.voice = chosen
+    }
+
+    /**
+     * Installed, offline voices for the current language, highest quality first, then lowest
+     * latency. Falls back to every installed voice if none match the language.
+     */
+    private fun rankedVoices(): List<Voice> {
+        if (!engineReady) return emptyList()
+        val all =
+            runCatching { engine.voices }
+                .getOrNull()
+                .orEmpty()
+                .filter { voice ->
+                    !voice.isNetworkConnectionRequired &&
+                        TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED !in voice.features
+                }
+        val language = Locale.getDefault().language
+        val matching = all.filter { it.locale.language == language }
+        val candidates = matching.ifEmpty { all }
+        val current = Locale.getDefault()
+        // The engine's own default breaks ties, so the automatic choice is the voice the system would use.
+        val systemDefault = runCatching { engine.defaultVoice?.name }.getOrNull()
+        return candidates.sortedWith(
+            compareByDescending<Voice> { it.quality }
+                .thenByDescending { it.locale == current }
+                .thenByDescending { it.name == systemDefault }
+                .thenBy { it.latency }
+                .thenBy { it.name },
+        )
+    }
+
+    private fun displayName(voice: Voice): String {
+        // Google's names look like "en-us-x-tpf-local"; show the language and the engine's short tag.
+        val tag =
+            voice.name
+                .substringAfter("-x-", voice.name)
+                .removeSuffix("-local")
+                .removeSuffix("-network")
+        return "${voice.locale.displayName} ($tag)"
+    }
+
+    private fun qualityLabel(quality: Int): String =
+        when {
+            quality >= Voice.QUALITY_VERY_HIGH -> "Very high"
+            quality >= Voice.QUALITY_HIGH -> "High"
+            quality >= Voice.QUALITY_NORMAL -> "Normal"
+            else -> "Low"
+        }
+
     private fun fileFor(phrase: String): File {
         val safeName = phrase.map { if (it.isLetterOrDigit()) it else '_' }.joinToString("")
-        return File(cacheDir, "$safeName-${phrase.hashCode()}.wav")
+        val voiceKey = (engine.voice?.name ?: "default").hashCode()
+        return File(cacheDir, "$safeName-${phrase.hashCode()}-$voiceKey.wav")
     }
 
     private companion object {
         const val TAG = "LetterVoice"
         const val CLIP_PREFIX = "clip:"
+        const val GOOGLE_ENGINE = "com.google.android.tts"
+
+        /** Letters are said a little slower than running speech so they are easier to tell apart. */
+        const val LETTER_RATE = 0.85f
+
+        /**
+         * Silence at the start of every sound. The audio output wakes up over the first few tens of
+         * milliseconds, and anything spoken in that window is lost: "boo" arrives as "oo".
+         */
+        const val ONSET_SILENCE_MILLIS = 60
     }
 }
