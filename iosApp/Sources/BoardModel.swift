@@ -35,6 +35,7 @@ final class BoardModel: ObservableObject {
         self.session = session
         self.state = session.state
         bridge.model = self
+        voice.onSpeakingChanged = { [weak self] speaking in self?.speaking = speaking }
         voice.select(voiceId: settings.voiceId)
         voice.prepare(phrases: session.layout.keys.map(\.spoken))
     }
@@ -72,6 +73,51 @@ final class BoardModel: ObservableObject {
     func clear() { session.clear() }
     func speak() { session.speak() }
 
+    // Lessons from a Spelling Creator hub. Read only, no account: the hub's public endpoints.
+    private let hub = HubClient(http: HttpClient())
+    @Published private(set) var lessonListing: [LessonSummary]?
+    @Published private(set) var lessonError: String?
+    @Published private(set) var lessonLoading = false
+
+    func loadLessonListing() {
+        lessonLoading = true
+        lessonError = nil
+        hub.listLessons(baseUrl: settings.hubUrl) { [weak self] list, error in
+            self?.lessonLoading = false
+            self?.lessonListing = list
+            self?.lessonError = error
+        }
+    }
+
+    /// Opens a lesson from a hub link or a bare id. `onOpened` runs once it is on the board.
+    func openLesson(_ input: String, onOpened: @escaping () -> Void) {
+        guard let address = HubLinks.shared.parse(input: input, defaultBaseUrl: settings.hubUrl) else {
+            lessonError = "Paste a lesson link or id from the hub."
+            return
+        }
+        lessonLoading = true
+        lessonError = nil
+        hub.fetchLesson(address: address) { [weak self] lesson, error in
+            guard let self else { return }
+            self.lessonLoading = false
+            self.lessonError = error
+            if let lesson {
+                self.session.startLesson(lesson: lesson)
+                onOpened()
+            }
+        }
+    }
+
+    func endLesson() { session.endLesson() }
+    func nextStep() { session.nextStep() }
+    func previousStep() { session.previousStep() }
+    func submitAnswer() { session.submitAnswer() }
+    func speakStep() { session.speakStep() }
+    func stopSpeaking() { session.stopSpeaking() }
+
+    /// Whether live speech is being spoken, so Speak and Read aloud can turn into Stop.
+    @Published private(set) var speaking = false
+
     func recordSentence() { session.recordSentence() }
     func speakHistoryEntry(_ id: String) { session.speakHistoryEntry(id: id) }
     func restoreHistoryEntry(_ id: String) { session.restoreHistoryEntry(id: id) }
@@ -91,6 +137,8 @@ final class BoardModel: ObservableObject {
         switch feedback.kind {
         case FeedbackKind.say:
             voice.say(feedback.text ?? "", interrupt: feedback.interrupt)
+        case FeedbackKind.stopSpeaking:
+            voice.stop()
         case FeedbackKind.keyCommitted:
             guard let keyId = feedback.keyId else { return }
             flash(keyId, .committed)

@@ -24,6 +24,9 @@ hub's lessons; see [docs/integration.md](docs/integration.md).
 - Space reads the word back. Speak reads the sentence. Delete and Clear say what they did.
 - Share sends the sentence through the system share sheet (messages, mail, notes, anything installed),
   and Copy puts it on the clipboard. The screen stays awake while the board is showing.
+- Lessons from a Spelling Creator hub: pick one from the list or paste a link, step through its
+  material and questions, and answer each question on the board. Works with self-hosted hubs through
+  a setting. Read only, no account, nothing sent back.
 - History keeps finished sentences on the device: everything that was spoken, shared, copied or
   cleared, with a time. Tap one to put it back on the board, speak it, or delete it; share or delete
   them all; or turn history off in settings, which deletes them too. Nothing leaves the device.

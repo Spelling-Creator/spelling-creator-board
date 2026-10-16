@@ -2,6 +2,9 @@ package org.spellingcreator.board.session
 
 import org.spellingcreator.board.input.PointerEvent
 import org.spellingcreator.board.input.PointerPhase
+import org.spellingcreator.board.lessons.LESSON_JSON
+import org.spellingcreator.board.lessons.LessonParser
+import org.spellingcreator.board.lessons.LessonStepKind
 import org.spellingcreator.board.settings.BoardSettings
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -115,6 +118,36 @@ class BoardSessionTest {
         session.clear()
         session.speak()
         assertEquals(emptyList(), state?.history)
+    }
+
+    @Test
+    fun aLessonStepsThroughAndTakesTheBoardAsItsAnswerBox() {
+        val lesson = LessonParser.parseLesson(LESSON_JSON)!!
+        session.startLesson(lesson)
+        val first = state?.lesson!!
+        assertEquals(LessonStepKind.CONTENT, first.kind)
+        assertEquals(5, first.stepCount)
+        session.speakStep()
+        assertEquals(true, feedback.last().text?.startsWith("Where cats come from"))
+        session.submitAnswer()
+        assertEquals(LessonStepKind.QUESTION, state?.lesson?.kind)
+        assertEquals("K", state?.lesson?.question?.tag)
+        session.submitAnswer()
+        assertEquals(1, state?.lesson?.stepIndex)
+        tap("letter-C", 0)
+        tap("letter-A", 1000)
+        tap("letter-T", 2000)
+        session.submitAnswer()
+        assertEquals("", state?.text)
+        assertEquals(2, state?.lesson?.stepIndex)
+        assertEquals(1, state?.lesson?.answeredCount)
+        assertEquals(listOf("CAT"), state?.history?.map { it.text })
+        session.previousStep()
+        assertEquals(FeedbackKind.STOP_SPEAKING, feedback.last().kind)
+        assertEquals("CAT", state?.lesson?.answer)
+        assertEquals("From which species is every pet cat descended?\nCAT", session.lessonAnswersText)
+        session.endLesson()
+        assertNull(state?.lesson)
     }
 
     @Test

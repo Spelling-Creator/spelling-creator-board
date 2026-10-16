@@ -21,6 +21,8 @@ Package `org.spellingcreator.board`.
 | `text`     | `SpelledText`: the sentence, the current word, space, backspace, clear.                                                                        |
 | `settings` | `BoardSettings` (per-speller preferences, serializable) and `SettingsStore` (expect/actual over `SharedPreferences` and `NSUserDefaults`).      |
 | `history`  | `SentenceHistory` (finished sentences, newest first, capped at 500, no consecutive duplicates), `HistoryEntry`, and `HistoryStore` with a preferences-backed actual per platform and an in-memory one for tests. |
+| `lessons`  | `Lesson` and its blocks, `LessonParser` (the hub's JSON to words), `LessonSteps` (the walkthrough), `LessonRun` (position and answers), `HubLinks` (links and ids to addresses) and `HubClient` (the two public endpoints). See `docs/integration.md`. |
+| `net`      | `HttpClient`, an expect/actual GET with a main-thread callback: `HttpURLConnection` on Android, `NSURLSession` on iOS. |
 | `session`  | `BoardSession`, the one object the apps talk to, plus `BoardState` (what to draw) and `Feedback` (what to do right now).                        |
 
 ### `BoardSession`

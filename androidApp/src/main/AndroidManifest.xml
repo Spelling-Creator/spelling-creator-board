@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Lessons are fetched from a Spelling Creator hub. Nothing else uses the network. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- Lets the app list the installed text to speech engines on Android 11 and later. -->
     <queries>
         <intent>

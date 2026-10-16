@@ -10,6 +10,10 @@ import org.spellingcreator.board.input.SelectionKind
 import org.spellingcreator.board.layout.BoardGeometry
 import org.spellingcreator.board.layout.BoardLayout
 import org.spellingcreator.board.layout.BoardLayouts
+import org.spellingcreator.board.lessons.Lesson
+import org.spellingcreator.board.lessons.LessonRun
+import org.spellingcreator.board.lessons.LessonStepKind
+import org.spellingcreator.board.lessons.LessonSteps
 import org.spellingcreator.board.settings.BoardSettings
 import org.spellingcreator.board.text.SpelledText
 
@@ -22,6 +26,8 @@ data class BoardState(
     val settings: BoardSettings,
     /** Finished sentences, newest first. Empty while history is off. */
     val history: List<HistoryEntry>,
+    /** The open lesson's current step, or null when no lesson is open. */
+    val lesson: LessonView? = null,
 )
 
 /** Implemented by the platform UI. Both callbacks arrive on the thread that drove the session. */
@@ -62,6 +68,7 @@ class BoardSession(
         )
     private val spelled = SpelledText()
     private var pressedKeyId: String? = null
+    private var run: LessonRun? = null
 
     val state: BoardState
         get() =
@@ -72,7 +79,101 @@ class BoardSession(
                 pressedKeyId = pressedKeyId,
                 settings = settings,
                 history = history.entries,
+                lesson = lessonView(),
             )
+
+    private fun lessonView(): LessonView? {
+        val run = run ?: return null
+        val step = run.current ?: return null
+        return LessonView(
+            lessonId = run.lesson.id,
+            title = run.lesson.title,
+            author = run.lesson.author,
+            stepIndex = run.index,
+            stepCount = run.steps.size,
+            kind = step.kind,
+            sectionName = step.sectionName,
+            blocks = step.blocks,
+            question = step.question,
+            questionNumber = step.questionNumber,
+            answer = run.answer(step),
+            answeredCount = run.answeredCount,
+            questionCount = run.questionCount,
+            hasPrevious = run.hasPrevious,
+            hasNext = run.hasNext,
+        )
+    }
+
+    /** Opens a lesson at its first step. A lesson with nothing in it is ignored. */
+    fun startLesson(lesson: Lesson) {
+        val next = LessonRun(lesson)
+        if (next.steps.isEmpty()) return
+        run = next
+        publish()
+    }
+
+    fun endLesson() {
+        if (run == null) return
+        run = null
+        stopSpeaking()
+        publish()
+    }
+
+    /** Moving between steps cuts off a step being read aloud, so the voice never runs ahead of the screen. */
+    fun nextStep() {
+        if (run?.next() == true) {
+            stopSpeaking()
+            publish()
+        }
+    }
+
+    fun previousStep() {
+        if (run?.previous() == true) {
+            stopSpeaking()
+            publish()
+        }
+    }
+
+    /** Stops anything being spoken: a step, a word, a sentence. */
+    fun stopSpeaking() {
+        emit(Feedback(FeedbackKind.STOP_SPEAKING))
+    }
+
+    /**
+     * Hands the sentence on the board to the lesson as the answer to the current question, keeps
+     * it in the history, clears the board and moves on. On a content step it just moves on.
+     */
+    fun submitAnswer() {
+        val run = run ?: return
+        val step = run.current ?: return
+        if (step.kind == LessonStepKind.QUESTION) {
+            val answer = spelled.text.trim()
+            if (answer.isEmpty()) return
+            run.record(step, answer)
+            recordSentence()
+            spelled.clear()
+            emit(Feedback(FeedbackKind.CLEARED, haptic = HapticKind.CONFIRM))
+        }
+        run.next()
+        stopSpeaking()
+        publish()
+    }
+
+    /** Reads the current step aloud: the section name, then its material or its question. */
+    fun speakStep() {
+        val step = run?.current ?: return
+        val text = LessonSteps.speech(step)
+        if (text.isNotBlank()) emit(Feedback(FeedbackKind.SAY, text = text, interrupt = true))
+    }
+
+    /** Every answer given so far, as "question" then "answer" lines, for sharing. */
+    val lessonAnswersText: String
+        get() {
+            val run = run ?: return ""
+            return run.steps
+                .filter { it.kind == LessonStepKind.QUESTION && run.answer(it) != null }
+                .joinToString("\n\n") { step -> "${step.question?.prompt.orEmpty()}\n${run.answer(step).orEmpty()}" }
+        }
 
     /** Every kept sentence as one block of text, oldest first, for sharing. */
     val historyText: String get() = history.asText()

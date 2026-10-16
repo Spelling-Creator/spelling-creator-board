@@ -3,10 +3,15 @@ package org.spellingcreator.board.ui
 import android.app.Application
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import org.spellingcreator.board.history.PreferencesHistoryStore
 import org.spellingcreator.board.input.PointerEvent
+import org.spellingcreator.board.lessons.HubClient
+import org.spellingcreator.board.lessons.HubLinks
+import org.spellingcreator.board.lessons.LessonSummary
 import org.spellingcreator.board.session.BoardSession
 import org.spellingcreator.board.session.BoardSessionListener
 import org.spellingcreator.board.session.BoardState
@@ -69,6 +74,62 @@ class BoardViewModel(
     fun clear() = session.clear()
 
     fun speak() = session.speak()
+
+    // Lessons from a Spelling Creator hub. Read only, no account: the hub's public endpoints.
+    private val hub = HubClient()
+
+    var lessonListing: List<LessonSummary>? by mutableStateOf(null)
+        private set
+    var lessonError: String? by mutableStateOf(null)
+        private set
+    var lessonLoading: Boolean by mutableStateOf(false)
+        private set
+
+    fun loadLessonListing() {
+        lessonLoading = true
+        lessonError = null
+        hub.listLessons(session.settings.hubUrl) { list, error ->
+            lessonLoading = false
+            lessonListing = list
+            lessonError = error
+        }
+    }
+
+    /** Opens a lesson from a hub link or a bare id. [onOpened] runs once it is on the board. */
+    fun openLesson(
+        input: String,
+        onOpened: () -> Unit,
+    ) {
+        val address = HubLinks.parse(input, session.settings.hubUrl)
+        if (address == null) {
+            lessonError = "Paste a lesson link or id from the hub."
+            return
+        }
+        lessonLoading = true
+        lessonError = null
+        hub.fetchLesson(address) { lesson, error ->
+            lessonLoading = false
+            lessonError = error
+            if (lesson != null) {
+                session.startLesson(lesson)
+                onOpened()
+            }
+        }
+    }
+
+    fun endLesson() = session.endLesson()
+
+    fun nextStep() = session.nextStep()
+
+    fun previousStep() = session.previousStep()
+
+    fun submitAnswer() = session.submitAnswer()
+
+    fun speakStep() = session.speakStep()
+
+    fun stopSpeaking() = session.stopSpeaking()
+
+    val lessonAnswersText: String get() = session.lessonAnswersText
 
     fun recordSentence() = session.recordSentence()
 

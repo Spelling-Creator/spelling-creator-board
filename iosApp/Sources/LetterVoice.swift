@@ -18,7 +18,7 @@ struct VoiceOption: Identifiable, Hashable {
 ///
 /// The voice matters for single letters: compact voices blur Z and C, B and P. With no voice
 /// chosen, the best installed voice for the current language is used.
-final class LetterVoice {
+final class LetterVoice: NSObject, AVSpeechSynthesizerDelegate {
     private let synthesizer = AVSpeechSynthesizer()
     private let renderer = AVSpeechSynthesizer()
     private let engine = AVAudioEngine()
@@ -30,11 +30,43 @@ final class LetterVoice {
     private var connectedFormat: AVAudioFormat?
     private var voice: AVSpeechSynthesisVoice? = LetterVoice.bestVoice()
 
-    init() {
+    /// Called on the main thread whenever live speech (a word, a sentence, a lesson step) starts or ends.
+    var onSpeakingChanged: ((Bool) -> Void)?
+
+    override init() {
+        super.init()
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
         try? session.setActive(true)
         engine.attach(player)
+        synthesizer.delegate = self
+    }
+
+    /// Stops whatever is being said, live speech and clips alike.
+    func stop() {
+        player.stop()
+        synthesizer.stopSpeaking(at: .immediate)
+        speakingChanged(false)
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
+        speakingChanged(true)
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        speakingChanged(false)
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        speakingChanged(false)
+    }
+
+    private func speakingChanged(_ speaking: Bool) {
+        if Thread.isMainThread {
+            onSpeakingChanged?(speaking)
+        } else {
+            DispatchQueue.main.async { [weak self] in self?.onSpeakingChanged?(speaking) }
+        }
     }
 
     /// Installed voices for the current language, best first. Falls back to every voice if none match.

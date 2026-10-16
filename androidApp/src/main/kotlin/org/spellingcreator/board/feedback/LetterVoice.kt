@@ -4,10 +4,15 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.SoundPool
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import java.io.File
 import java.util.Locale
 
@@ -67,11 +72,23 @@ class LetterVoice(
             }
         }
 
+    private val main = Handler(Looper.getMainLooper())
+
+    /** Whether live speech (a word, a sentence, a lesson step) is being spoken. Letter clips are too short to count. */
+    var speaking: Boolean by mutableStateOf(false)
+        private set
+
     private val progressListener =
         object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String) = Unit
+            override fun onStart(utteranceId: String) {
+                if (utteranceId == LIVE_ID) main.post { speaking = true }
+            }
 
             override fun onDone(utteranceId: String) {
+                if (utteranceId == LIVE_ID) {
+                    main.post { speaking = false }
+                    return
+                }
                 val phrase = utteranceId.removePrefix(CLIP_PREFIX)
                 if (phrase == utteranceId) return
                 rendering.remove(phrase)
@@ -82,9 +99,20 @@ class LetterVoice(
 
             @Deprecated("Deprecated in Java")
             override fun onError(utteranceId: String) {
+                if (utteranceId == LIVE_ID) {
+                    main.post { speaking = false }
+                    return
+                }
                 rendering.remove(utteranceId.removePrefix(CLIP_PREFIX))
             }
         }
+
+    /** Stops whatever is being said, live speech and clips alike. */
+    fun stop() {
+        if (engineReady) engine.stop()
+        soundPool.stop(currentStream)
+        speaking = false
+    }
 
     init {
         soundPool.setOnLoadCompleteListener { _, sampleId, status ->
@@ -150,7 +178,7 @@ class LetterVoice(
         engine.setSpeechRate(if (text.length == 1) LETTER_RATE else 1f)
         // A moment of silence first wakes the audio output, so the first consonant is not lost.
         engine.playSilentUtterance(ONSET_SILENCE_MILLIS.toLong(), queueMode, "silence")
-        engine.speak(speakable(text), TextToSpeech.QUEUE_ADD, null, "live")
+        engine.speak(speakable(text), TextToSpeech.QUEUE_ADD, null, LIVE_ID)
     }
 
     fun release() {
@@ -232,6 +260,7 @@ class LetterVoice(
     private companion object {
         const val TAG = "LetterVoice"
         const val CLIP_PREFIX = "clip:"
+        const val LIVE_ID = "live"
         const val GOOGLE_ENGINE = "com.google.android.tts"
 
         /** Letters are said a little slower than running speech so they are easier to tell apart. */

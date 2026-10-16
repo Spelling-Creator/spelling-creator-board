@@ -62,6 +62,21 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    HStack {
+                        TextField("Hub address", text: hubUrl)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .keyboardType(.URL)
+                        Button("Reset") { model.update(model.settings.with(hubUrl: HubLinks.shared.DEFAULT_HUB_URL)) }
+                            .disabled(model.settings.hubUrl == HubLinks.shared.DEFAULT_HUB_URL)
+                    }
+                } header: {
+                    Text("Spelling Creator")
+                } footer: {
+                    Text("Lessons are loaded from this Spelling Creator instance. Change it to use a self-hosted one.")
+                }
+
+                Section {
                     Toggle("Keep a history of sentences", isOn: binding(\.keepHistory) { $0.with(keepHistory: $1) })
                 } header: {
                     Text("Privacy")
@@ -90,6 +105,13 @@ struct SettingsView: View {
     private var refractoryLabel: String {
         let millis = model.settings.refractoryMillis
         return millis == 0 ? "Off" : "\(millis) ms"
+    }
+
+    private var hubUrl: Binding<String> {
+        Binding(
+            get: { model.settings.hubUrl },
+            set: { model.update(model.settings.with(hubUrl: $0.trimmingCharacters(in: .whitespaces))) }
+        )
     }
 
     private var voiceId: Binding<String?> {

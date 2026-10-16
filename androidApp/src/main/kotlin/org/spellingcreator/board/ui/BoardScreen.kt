@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Backspace
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DeleteSweep
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SpaceBar
+import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -62,8 +64,12 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -88,9 +94,17 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
     var popCount by remember { mutableIntStateOf(0) }
     var showSettings by remember { mutableStateOf(false) }
     var showHistory by remember { mutableStateOf(false) }
+    var showLessons by remember { mutableStateOf(false) }
 
     val voice = remember { LetterVoice(context) }
     DisposableEffect(voice) { onDispose { voice.release() } }
+    // Leaving the screen (home button, another app) stops a long read-aloud rather than letting it run on.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, voice) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) voice.stop() }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     LaunchedEffect(state.layout.id, state.settings.voiceId) {
         voice.select(state.settings.voiceId)
         voice.prepare(state.layout.keys.map { it.spoken })
@@ -108,6 +122,7 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
             }
             when (feedback.kind) {
                 FeedbackKind.SAY -> voice.say(feedback.text.orEmpty(), feedback.interrupt)
+                FeedbackKind.STOP_SPEAKING -> voice.stop()
                 FeedbackKind.KEY_COMMITTED ->
                     feedback.keyId?.let { keyId ->
                         popped =
@@ -167,6 +182,12 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
                     ) {
                         Icon(Icons.Outlined.Share, contentDescription = shareTitle)
                     }
+                    IconButton(onClick = { showLessons = true }) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.MenuBook,
+                            contentDescription = stringResource(R.string.lessons),
+                        )
+                    }
                     IconButton(onClick = { showHistory = true }) {
                         Icon(Icons.Outlined.History, contentDescription = stringResource(R.string.history))
                     }
@@ -195,7 +216,28 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
                     modifier = boardModifier,
                 )
             }
-            val sideWidth = maxWidth * 0.28f
+            val lesson = state.lesson
+            val lessonPanel: @Composable (Modifier, Dp) -> Unit = { panelModifier, maxBody ->
+                if (lesson != null) {
+                    LessonPanel(
+                        view = lesson,
+                        canSubmit = state.text.isNotBlank(),
+                        onPrevious = viewModel::previousStep,
+                        onNext = viewModel::nextStep,
+                        onSpeak = viewModel::speakStep,
+                        speaking = voice.speaking,
+                        onStop = viewModel::stopSpeaking,
+                        onSubmit = viewModel::submitAnswer,
+                        onEnd = viewModel::endLesson,
+                        modifier = panelModifier,
+                        maxBodyHeight = maxBody,
+                    )
+                }
+            }
+            // The lesson panel gets the side column's spare height in landscape and a bounded
+            // slice above the board in portrait, so the board itself stays large.
+            val sideWidth = if (lesson != null) maxWidth * 0.36f else maxWidth * 0.28f
+            val portraitPanelHeight = maxHeight * 0.3f
             if (maxWidth > maxHeight) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Column(
@@ -207,8 +249,17 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
                     ) {
                         LayoutPicker(selectedId = state.layout.id, onSelect = viewModel::selectLayout)
                         SentenceStrip(text = state.text, popped = popped, popCount = popCount, maxLines = 8)
-                        Spacer(Modifier.weight(1f))
-                        ControlButtons(viewModel = viewModel, grid = true)
+                        if (lesson != null) {
+                            lessonPanel(Modifier.weight(1f), Dp.Unspecified)
+                        } else {
+                            Spacer(Modifier.weight(1f))
+                        }
+                        ControlButtons(
+                            viewModel = viewModel,
+                            grid = true,
+                            speaking = voice.speaking,
+                            onStop = viewModel::stopSpeaking,
+                        )
                     }
                     board(
                         Modifier
@@ -219,16 +270,34 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     LayoutPicker(selectedId = state.layout.id, onSelect = viewModel::selectLayout)
+                    lessonPanel(Modifier, portraitPanelHeight)
                     SentenceStrip(text = state.text, popped = popped, popCount = popCount)
                     board(
                         Modifier
                             .fillMaxWidth()
                             .weight(1f),
                     )
-                    ControlButtons(viewModel = viewModel, grid = false)
+                    ControlButtons(
+                        viewModel = viewModel,
+                        grid = false,
+                        speaking = voice.speaking,
+                        onStop = viewModel::stopSpeaking,
+                    )
                 }
             }
         }
+    }
+
+    if (showLessons) {
+        LessonsSheet(
+            hubUrl = state.settings.hubUrl,
+            listing = viewModel.lessonListing,
+            loading = viewModel.lessonLoading,
+            error = viewModel.lessonError,
+            onLoadListing = viewModel::loadLessonListing,
+            onOpen = { input -> viewModel.openLesson(input) { showLessons = false } },
+            onDismiss = { showLessons = false },
+        )
     }
 
     if (showHistory) {
@@ -286,6 +355,8 @@ private fun LayoutPicker(
 private fun ControlButtons(
     viewModel: BoardViewModel,
     grid: Boolean,
+    speaking: Boolean,
+    onStop: () -> Unit,
 ) {
     val delete: @Composable (Modifier) -> Unit = {
         ControlButton(
@@ -303,13 +374,23 @@ private fun ControlButtons(
             modifier = it,
         )
     }
+    // Speak becomes Stop while something is being read, so there is always a way to cut it off.
     val speak: @Composable (Modifier) -> Unit = {
-        ControlButton(
-            label = stringResource(R.string.speak),
-            icon = { Icon(Icons.AutoMirrored.Outlined.VolumeUp, contentDescription = null) },
-            onClick = viewModel::speak,
-            modifier = it,
-        )
+        if (speaking) {
+            ControlButton(
+                label = stringResource(R.string.stop),
+                icon = { Icon(Icons.Outlined.Stop, contentDescription = null) },
+                onClick = onStop,
+                modifier = it,
+            )
+        } else {
+            ControlButton(
+                label = stringResource(R.string.speak),
+                icon = { Icon(Icons.AutoMirrored.Outlined.VolumeUp, contentDescription = null) },
+                onClick = viewModel::speak,
+                modifier = it,
+            )
+        }
     }
     val clear: @Composable (Modifier) -> Unit = {
         ControlButton(

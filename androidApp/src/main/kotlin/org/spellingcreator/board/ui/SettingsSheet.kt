@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import org.spellingcreator.board.R
 import org.spellingcreator.board.feedback.VoiceOption
 import org.spellingcreator.board.input.CommitMode
+import org.spellingcreator.board.lessons.HubLinks
 import org.spellingcreator.board.settings.BoardSettings
 import org.spellingcreator.board.settings.BoardStyle
 
@@ -159,6 +160,25 @@ fun SettingsSheet(
                 title = stringResource(R.string.haptics),
                 checked = settings.haptics,
                 onCheckedChange = { onChange(settings.copy(haptics = it)) },
+            )
+
+            Text(stringResource(R.string.hub), style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = settings.hubUrl,
+                    onValueChange = { onChange(settings.copy(hubUrl = it.trim())) },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.hub_url)) },
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = { onChange(settings.copy(hubUrl = HubLinks.DEFAULT_HUB_URL)) }) {
+                    Text(stringResource(R.string.reset))
+                }
+            }
+            Text(
+                stringResource(R.string.hub_url_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Text(stringResource(R.string.privacy), style = MaterialTheme.typography.titleMedium)

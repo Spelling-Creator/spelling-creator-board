@@ -19,6 +19,8 @@ data class BoardSettings(
     val voiceId: String? = null,
     /** Keep finished sentences on the device. Turning this off deletes the ones already kept. */
     val keepHistory: Boolean = true,
+    /** The Spelling Creator hub to load lessons from. Self-hosted instances put their own address here. */
+    val hubUrl: String = "https://spellingcreator.org",
 ) {
     companion object {
         const val MIN_REFRACTORY_MILLIS: Long = 0

@@ -15,7 +15,8 @@ extension BoardSettings {
         letterSounds: Bool? = nil,
         speakWords: Bool? = nil,
         haptics: Bool? = nil,
-        keepHistory: Bool? = nil
+        keepHistory: Bool? = nil,
+        hubUrl: String? = nil
     ) -> BoardSettings {
         BoardSettings(
             layoutId: layoutId ?? self.layoutId,
@@ -27,7 +28,8 @@ extension BoardSettings {
             speakWords: speakWords ?? self.speakWords,
             haptics: haptics ?? self.haptics,
             voiceId: voiceId,
-            keepHistory: keepHistory ?? self.keepHistory
+            keepHistory: keepHistory ?? self.keepHistory,
+            hubUrl: hubUrl ?? self.hubUrl
         )
     }
 
@@ -43,7 +45,8 @@ extension BoardSettings {
             speakWords: speakWords,
             haptics: haptics,
             voiceId: voiceId,
-            keepHistory: keepHistory
+            keepHistory: keepHistory,
+            hubUrl: hubUrl
         )
     }
 }

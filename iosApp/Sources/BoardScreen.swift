@@ -3,8 +3,10 @@ import SwiftUI
 
 struct BoardScreen: View {
     @EnvironmentObject private var model: BoardModel
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showSettings = false
     @State private var showHistory = false
+    @State private var showLessons = false
     @State private var copied = false
 
     var body: some View {
@@ -12,20 +14,27 @@ struct BoardScreen: View {
             // The board gets as much room as possible. In landscape the chrome moves into a side
             // column so the slab can use the full height; in portrait it stacks around the board.
             GeometryReader { proxy in
+                let lesson = model.state.lesson
                 if proxy.size.width > proxy.size.height {
                     HStack(spacing: 16) {
                         VStack(spacing: 12) {
                             layoutPicker
                             SentenceStrip(maxLines: 8)
-                            Spacer()
+                            if let lesson {
+                                LessonPanel(view: lesson)
+                            }
+                            Spacer(minLength: 0)
                             ControlBar(grid: true)
                         }
-                        .frame(width: proxy.size.width * 0.28)
+                        .frame(width: proxy.size.width * (lesson == nil ? 0.28 : 0.36))
                         BoardView()
                     }
                 } else {
                     VStack(spacing: 12) {
                         layoutPicker
+                        if let lesson {
+                            LessonPanel(view: lesson, maxBodyHeight: proxy.size.height * 0.22)
+                        }
                         SentenceStrip(maxLines: 2)
                         BoardView()
                         ControlBar(grid: false)
@@ -52,6 +61,11 @@ struct BoardScreen: View {
                     .disabled(sentence.isEmpty)
                     .simultaneousGesture(TapGesture().onEnded { model.recordSentence() })
                     Button {
+                        showLessons = true
+                    } label: {
+                        Label("Lessons", systemImage: "book")
+                    }
+                    Button {
                         showHistory = true
                     } label: {
                         Label("History", systemImage: "clock")
@@ -69,6 +83,9 @@ struct BoardScreen: View {
             .sheet(isPresented: $showHistory) {
                 HistoryView()
             }
+            .sheet(isPresented: $showLessons) {
+                LessonsView()
+            }
             .onChange(of: copied) { _, isCopied in
                 guard isCopied else { return }
                 Task {
@@ -79,6 +96,10 @@ struct BoardScreen: View {
             // A tablet dimming mid-sentence is a real problem with slow spellers, so the board keeps the screen on.
             .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
             .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+            // Leaving the app stops a long read-aloud rather than letting it run on.
+            .onChange(of: scenePhase) { _, phase in
+                if phase != .active { model.stopSpeaking() }
+            }
         }
     }
 
@@ -154,7 +175,7 @@ private struct ControlBar: View {
                     control("Space", systemImage: "space", action: model.space)
                 }
                 HStack(spacing: 12) {
-                    control("Speak", systemImage: "speaker.wave.2", action: model.speak)
+                    speakOrStop
                     control("Clear", systemImage: "trash", action: model.clear)
                 }
             }
@@ -162,9 +183,19 @@ private struct ControlBar: View {
             HStack(spacing: 12) {
                 control("Delete", systemImage: "delete.left", action: model.backspace)
                 control("Space", systemImage: "space", action: model.space)
-                control("Speak", systemImage: "speaker.wave.2", action: model.speak)
+                speakOrStop
                 control("Clear", systemImage: "trash", action: model.clear)
             }
+        }
+    }
+
+    /// Speak becomes Stop while something is being read, so there is always a way to cut it off.
+    @ViewBuilder
+    private var speakOrStop: some View {
+        if model.speaking {
+            control("Stop", systemImage: "stop.fill", action: model.stopSpeaking)
+        } else {
+            control("Speak", systemImage: "speaker.wave.2", action: model.speak)
         }
     }
 

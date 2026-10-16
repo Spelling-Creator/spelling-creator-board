@@ -24,6 +24,9 @@ enum class FeedbackKind {
 
     /** Speak [Feedback.text] aloud, cutting off anything still playing when [Feedback.interrupt] is set. */
     SAY,
+
+    /** Stop whatever is being spoken, now. */
+    STOP_SPEAKING,
 }
 
 enum class HapticKind {

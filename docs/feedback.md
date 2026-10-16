@@ -49,6 +49,13 @@ around it, the reject haptic plays, and nothing is spoken. The speller learns th
 responds differently to each case rather than responding to neither. Double letters still work by
 lifting and touching again after the window.
 
+## There is always a way to stop
+
+A sentence or a lesson step can take a while to read. While live speech is playing, Speak and
+Read aloud turn into Stop, moving to another lesson step or ending the lesson cuts speech off,
+and leaving the app stops it. The session emits `STOP_SPEAKING` for these, and each app's voice
+class stops both its synthesizer and its clip player on it.
+
 ## Every touch does something
 
 Hit testing snaps gaps and padding to the nearest key, so there are no dead zones on the board. A
