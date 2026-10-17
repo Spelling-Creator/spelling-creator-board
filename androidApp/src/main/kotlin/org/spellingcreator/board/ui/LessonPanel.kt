@@ -58,6 +58,8 @@ fun LessonPanel(
     onEnd: () -> Unit,
     modifier: Modifier = Modifier,
     maxBodyHeight: Dp = Dp.Unspecified,
+    /** Shown under the title while the board follows a Practice page. */
+    linkStatus: String? = null,
 ) {
     var showAnswers by remember(view.stepIndex) { mutableStateOf(false) }
     Card(modifier = modifier.fillMaxWidth()) {
@@ -71,6 +73,13 @@ fun LessonPanel(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (linkStatus != null) {
+                        Text(
+                            linkStatus,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
                 if (speaking) {
                     IconButton(onClick = onStop) {

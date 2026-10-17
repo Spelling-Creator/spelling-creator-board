@@ -54,9 +54,16 @@ HTTP boundary and through formats, never shared code. The
 is the method-neutral file the hub can export; reading OSLF files directly is a natural next step
 and would reuse `LessonParser`'s block model.
 
+## Live sync with a Practice page
+
+The board can join a letterboard session that a Practice page hosts, so the step on the tablet
+follows the computer and the sentence being spelled shows up in the computer's answer box. The
+board side is done; the hub side is specified in [live-sync.md](live-sync.md) and not yet built.
+
 ## Not done yet
 
 - Pictures are shown as captions only. Loading the images needs the hub's image URLs and a cache.
-- Saving answers to a hub account (`POST /lessons/<id>/responses`) needs a Supabase sign-in.
+- Saving answers to a hub account (`POST /lessons/<id>/responses`) needs a Supabase sign-in. A
+  linked Practice page does this for the board.
 - Drafts need the author's credentials and are not reachable.
 - Opening a `spellingcreator.org/hub/...` link from another app straight into the board (deep links).

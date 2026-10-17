@@ -34,6 +34,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.spellingcreator.board.R
 import org.spellingcreator.board.lessons.LessonSummary
+import org.spellingcreator.board.lessons.PracticeLinkState
+import org.spellingcreator.board.lessons.PracticeLinkStatus
 
 /** Pick a lesson from the hub, or paste a link to one, and open it on the board. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,10 +47,14 @@ fun LessonsSheet(
     error: String?,
     onLoadListing: () -> Unit,
     onOpen: (String) -> Unit,
+    linkState: PracticeLinkState,
+    onJoin: (String) -> Unit,
+    onLeave: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var link by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
     LaunchedEffect(hubUrl) { onLoadListing() }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -81,6 +87,45 @@ fun LessonsSheet(
             }
             if (error != null) {
                 Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+            }
+
+            Text(stringResource(R.string.session_title), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.session_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (linkState.isActive) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(sessionStatusText(linkState), modifier = Modifier.weight(1f))
+                    Button(onClick = onLeave) { Text(stringResource(R.string.session_leave)) }
+                }
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedTextField(
+                        value = code,
+                        onValueChange = { code = it },
+                        singleLine = true,
+                        label = { Text(stringResource(R.string.session_code)) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    Button(onClick = { onJoin(code) }, enabled = code.isNotBlank()) {
+                        Text(stringResource(R.string.session_join))
+                    }
+                }
+                if (linkState.status == PracticeLinkStatus.FAILED && linkState.message != null) {
+                    Text(
+                        linkState.message!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
             when {
                 listing == null && loading -> SkeletonRows()
@@ -116,6 +161,16 @@ fun LessonsSheet(
         }
     }
 }
+
+@Composable
+fun sessionStatusText(state: PracticeLinkState): String =
+    when (state.status) {
+        PracticeLinkStatus.CONNECTING -> stringResource(R.string.session_connecting)
+        PracticeLinkStatus.WAITING -> stringResource(R.string.session_waiting)
+        PracticeLinkStatus.LINKED -> stringResource(R.string.session_linked, state.code)
+        PracticeLinkStatus.FAILED -> state.message ?: stringResource(R.string.session_failed)
+        PracticeLinkStatus.OFF -> ""
+    }
 
 /** Placeholder rows while the listing loads, the shape of the rows that will replace them. */
 @Composable

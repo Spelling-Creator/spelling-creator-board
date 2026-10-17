@@ -29,6 +29,15 @@ class LessonRun(
         return true
     }
 
+    /** Moves to [target], clamped to the lesson. Returns whether the position changed. */
+    fun goTo(target: Int): Boolean {
+        if (steps.isEmpty()) return false
+        val clamped = target.coerceIn(0, steps.size - 1)
+        if (clamped == index) return false
+        index = clamped
+        return true
+    }
+
     fun answer(step: LessonStep): String? = answers[step.key]
 
     fun record(

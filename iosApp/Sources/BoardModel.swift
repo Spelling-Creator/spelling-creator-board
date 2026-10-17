@@ -108,6 +108,36 @@ final class BoardModel: ObservableObject {
         }
     }
 
+    // A letterboard session with a Practice page on another screen. See docs/live-sync.md.
+    @Published private(set) var linkState = PracticeLinkState(status: .off, hubUrl: "", code: "", message: nil)
+    private var link: PracticeLink?
+
+    func joinSession(_ code: String) {
+        if link == nil {
+            link = PracticeLink(
+                session: session,
+                sockets: WebSockets_iosKt.platformWebSockets(),
+                fetchLesson: { [hub] address, callback in
+                    hub.fetchLesson(address: address) { lesson, error in _ = callback(lesson, error) }
+                },
+                onStateChanged: { [weak self] state in self?.linkState = state }
+            )
+        }
+        link?.join(hubUrl: settings.hubUrl, code: code)
+    }
+
+    func leaveSession() { link?.leave() }
+
+    var linkStatusText: String? {
+        switch linkState.status {
+        case PracticeLinkStatus.connecting: return "Connecting…"
+        case PracticeLinkStatus.waiting: return "Connected. Waiting for the host to open a lesson."
+        case PracticeLinkStatus.linked: return "Linked to session \(linkState.code)"
+        case PracticeLinkStatus.failed: return linkState.message ?? "The session ended."
+        default: return nil
+        }
+    }
+
     func endLesson() { session.endLesson() }
     func nextStep() { session.nextStep() }
     func previousStep() { session.previousStep() }

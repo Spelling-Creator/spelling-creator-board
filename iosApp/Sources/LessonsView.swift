@@ -6,6 +6,7 @@ struct LessonsView: View {
     @EnvironmentObject private var model: BoardModel
     @Environment(\.dismiss) private var dismiss
     @State private var link = ""
+    @State private var code = ""
 
     var body: some View {
         NavigationStack {
@@ -24,6 +25,33 @@ struct LessonsView: View {
                     }
                 } footer: {
                     Text("From \(model.settings.hubUrl). Nothing is sent to the hub; answers stay on this device.")
+                }
+
+                Section {
+                    if model.linkState.isActive {
+                        HStack {
+                            Text(model.linkStatusText ?? "")
+                            Spacer()
+                            Button("Leave") { model.leaveSession() }
+                        }
+                    } else {
+                        HStack {
+                            TextField("Session code", text: $code)
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                            Button("Join") { model.joinSession(code) }
+                                .disabled(code.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
+                        if model.linkState.status == PracticeLinkStatus.failed, let message = model.linkState.message {
+                            Text(message).foregroundStyle(.red)
+                        }
+                    }
+                } header: {
+                    Text("Letterboard session")
+                } footer: {
+                    Text(
+                        "Open a lesson's Practice page on a computer, start a letterboard session there, and enter "
+                            + "its code. The board follows the computer, and what is spelled here shows up there.")
                 }
 
                 Section("On the hub") {

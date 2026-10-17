@@ -46,10 +46,21 @@ interface BoardSessionListener {
  */
 class BoardSession(
     settings: BoardSettings = BoardSettings(),
-    private val listener: BoardSessionListener,
+    listener: BoardSessionListener,
     historyStore: HistoryStore = InMemoryHistoryStore(),
 ) {
     private val history = SentenceHistory(historyStore)
+
+    // The view's listener first, then anything else that follows the session, such as a practice link.
+    private val listeners = mutableListOf(listener)
+
+    fun addListener(listener: BoardSessionListener) {
+        if (listener !in listeners) listeners += listener
+    }
+
+    fun removeListener(listener: BoardSessionListener) {
+        listeners -= listener
+    }
 
     var settings: BoardSettings = settings
         private set
@@ -134,6 +145,21 @@ class BoardSession(
         }
     }
 
+    /** Jumps to a step by index, clamped to the lesson. Used when a linked Practice page moves. */
+    fun goToStep(index: Int) {
+        if (run?.goTo(index) == true) {
+            stopSpeaking()
+            publish()
+        }
+    }
+
+    /** Replaces the sentence on the board, for a linked session handing back what the host holds. */
+    fun replaceText(text: String) {
+        if (spelled.text == text) return
+        spelled.replace(text)
+        publish()
+    }
+
     /** Stops anything being spoken: a step, a word, a sentence. */
     fun stopSpeaking() {
         emit(Feedback(FeedbackKind.STOP_SPEAKING))
@@ -152,6 +178,7 @@ class BoardSession(
             run.record(step, answer)
             recordSentence()
             spelled.clear()
+            emit(Feedback(FeedbackKind.ANSWER_SUBMITTED, text = answer))
             emit(Feedback(FeedbackKind.CLEARED, haptic = HapticKind.CONFIRM))
         }
         run.next()
@@ -305,13 +332,13 @@ class BoardSession(
         publish()
     }
 
-    private fun publish() = listener.onStateChanged(state)
+    private fun publish() {
+        val snapshot = state
+        for (listener in listeners.toList()) listener.onStateChanged(snapshot)
+    }
 
     private fun emit(feedback: Feedback) {
-        if (feedback.haptic != null && !settings.haptics) {
-            listener.onFeedback(feedback.copy(haptic = null))
-        } else {
-            listener.onFeedback(feedback)
-        }
+        val delivered = if (feedback.haptic != null && !settings.haptics) feedback.copy(haptic = null) else feedback
+        for (listener in listeners.toList()) listener.onFeedback(delivered)
     }
 }

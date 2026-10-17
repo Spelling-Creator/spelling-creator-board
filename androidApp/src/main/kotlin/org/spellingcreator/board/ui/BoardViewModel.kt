@@ -12,6 +12,9 @@ import org.spellingcreator.board.input.PointerEvent
 import org.spellingcreator.board.lessons.HubClient
 import org.spellingcreator.board.lessons.HubLinks
 import org.spellingcreator.board.lessons.LessonSummary
+import org.spellingcreator.board.lessons.PracticeLink
+import org.spellingcreator.board.lessons.PracticeLinkState
+import org.spellingcreator.board.net.platformWebSockets
 import org.spellingcreator.board.session.BoardSession
 import org.spellingcreator.board.session.BoardSessionListener
 import org.spellingcreator.board.session.BoardState
@@ -117,6 +120,22 @@ class BoardViewModel(
         }
     }
 
+    // A letterboard session with a Practice page on another screen. See docs/live-sync.md.
+    var linkState: PracticeLinkState by mutableStateOf(PracticeLinkState())
+        private set
+
+    private val link =
+        PracticeLink(
+            session = session,
+            sockets = platformWebSockets(),
+            fetchLesson = hub::fetchLesson,
+            onStateChanged = { linkState = it },
+        )
+
+    fun joinSession(code: String) = link.join(session.settings.hubUrl, code)
+
+    fun leaveSession() = link.leave()
+
     fun endLesson() = session.endLesson()
 
     fun nextStep() = session.nextStep()
@@ -142,4 +161,8 @@ class BoardViewModel(
     fun clearHistory() = session.clearHistory()
 
     val historyText: String get() = session.historyText
+
+    override fun onCleared() {
+        link.leave()
+    }
 }

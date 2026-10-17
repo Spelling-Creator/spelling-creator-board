@@ -27,6 +27,9 @@ hub's lessons; see [docs/integration.md](docs/integration.md).
 - Lessons from a Spelling Creator hub: pick one from the list or paste a link, step through its
   material and questions, and answer each question on the board. Works with self-hosted hubs through
   a setting. Read only, no account, nothing sent back.
+- Live sync with a Practice page on another screen: join with a code and the board follows the
+  computer's step while the computer shows what is being spelled. The board side is built; the hub
+  side is specified in [docs/live-sync.md](docs/live-sync.md).
 - History keeps finished sentences on the device: everything that was spoken, shared, copied or
   cleared, with a time. Tap one to put it back on the board, speak it, or delete it; share or delete
   them all; or turn history off in settings, which deletes them too. Nothing leaves the device.

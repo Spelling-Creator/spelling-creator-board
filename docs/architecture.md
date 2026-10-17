@@ -22,7 +22,13 @@ Package `org.spellingcreator.board`.
 | `settings` | `BoardSettings` (per-speller preferences, serializable) and `SettingsStore` (expect/actual over `SharedPreferences` and `NSUserDefaults`).      |
 | `history`  | `SentenceHistory` (finished sentences, newest first, capped at 500, no consecutive duplicates), `HistoryEntry`, and `HistoryStore` with a preferences-backed actual per platform and an in-memory one for tests. |
 | `lessons`  | `Lesson` and its blocks, `LessonParser` (the hub's JSON to words), `LessonSteps` (the walkthrough), `LessonRun` (position and answers), `HubLinks` (links and ids to addresses) and `HubClient` (the two public endpoints). See `docs/integration.md`. |
-| `net`      | `HttpClient`, an expect/actual GET with a main-thread callback: `HttpURLConnection` on Android, `NSURLSession` on iOS. |
+| `net`      | `HttpClient`, an expect/actual GET with a main-thread callback: `HttpURLConnection` on Android, `NSURLSession` on iOS. `WebSocketFactory`, the same idea for WebSockets: OkHttp on Android, `URLSessionWebSocketTask` on iOS, pings handled by the platform. |
+
+`lessons` also holds `PracticeLink`, which keeps the board in step with a Practice page over the
+hub's letterboard session (`docs/live-sync.md`). It is a second `BoardSessionListener`: the
+session has a list of listeners, the view's first, and the link sends what it hears over the
+socket and drives the session with what comes back. Nothing in `BoardSession` knows about
+sockets.
 | `session`  | `BoardSession`, the one object the apps talk to, plus `BoardState` (what to draw) and `Feedback` (what to do right now).                        |
 
 ### `BoardSession`

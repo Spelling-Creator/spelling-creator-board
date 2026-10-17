@@ -229,6 +229,7 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
                         onStop = viewModel::stopSpeaking,
                         onSubmit = viewModel::submitAnswer,
                         onEnd = viewModel::endLesson,
+                        linkStatus = if (viewModel.linkState.isActive) sessionStatusText(viewModel.linkState) else null,
                         modifier = panelModifier,
                         maxBodyHeight = maxBody,
                     )
@@ -296,6 +297,9 @@ fun BoardScreen(viewModel: BoardViewModel = viewModel()) {
             error = viewModel.lessonError,
             onLoadListing = viewModel::loadLessonListing,
             onOpen = { input -> viewModel.openLesson(input) { showLessons = false } },
+            linkState = viewModel.linkState,
+            onJoin = { code -> viewModel.joinSession(code) },
+            onLeave = viewModel::leaveSession,
             onDismiss = { showLessons = false },
         )
     }

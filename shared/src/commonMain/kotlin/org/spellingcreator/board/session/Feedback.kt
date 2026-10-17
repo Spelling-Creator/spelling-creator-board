@@ -27,6 +27,9 @@ enum class FeedbackKind {
 
     /** Stop whatever is being spoken, now. */
     STOP_SPEAKING,
+
+    /** The sentence in [Feedback.text] was handed to the open lesson as an answer. */
+    ANSWER_SUBMITTED,
 }
 
 enum class HapticKind {

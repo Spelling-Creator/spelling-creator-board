@@ -44,5 +44,9 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        androidMain.dependencies {
+            // WebSockets for letterboard sessions. Android has no WebSocket client of its own.
+            implementation(libs.okhttp)
+        }
     }
 }

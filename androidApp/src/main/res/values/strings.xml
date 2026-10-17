@@ -33,6 +33,15 @@
     <string name="lesson_next">Next step</string>
     <string name="lesson_done">Done</string>
     <string name="lesson_vakt">VAKT activity</string>
+    <string name="session_title">Letterboard session</string>
+    <string name="session_hint">Open a lesson\'s Practice page on a computer, start a letterboard session there, and enter its code. The board follows the computer, and what is spelled here shows up there.</string>
+    <string name="session_code">Session code</string>
+    <string name="session_join">Join</string>
+    <string name="session_leave">Leave</string>
+    <string name="session_connecting">Connecting…</string>
+    <string name="session_waiting">Connected. Waiting for the host to open a lesson.</string>
+    <string name="session_linked">Linked to session %1$s</string>
+    <string name="session_failed">The session ended.</string>
     <string name="hub">Spelling Creator</string>
     <string name="hub_url">Hub address</string>
     <string name="hub_url_hint">Lessons are loaded from this Spelling Creator instance. Change it to use a self-hosted one.</string>

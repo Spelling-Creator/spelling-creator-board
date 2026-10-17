@@ -15,6 +15,9 @@ struct LessonPanel: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(view.title).font(.headline)
                     Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                    if model.linkState.isActive, let status = model.linkStatusText {
+                        Text(status).font(.caption.weight(.semibold)).foregroundStyle(Color.accentColor)
+                    }
                 }
                 Spacer()
                 if model.speaking {
